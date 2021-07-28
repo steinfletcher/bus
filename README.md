@@ -25,7 +25,7 @@ msgBus.Subscribe(func(ctx context.Context, message Message) error {
 })
 ```
 
-The is synchronous, so the subscriber can mutate the message if the publisher needs a return value, e.g.
+The subscriber is run synchronously. A common pattern is to mutate the message in the subscriber, allowing the publisher to access the return value. For example
 
 ```go
 b := bus.New()
