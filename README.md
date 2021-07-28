@@ -1,7 +1,5 @@
 # bus
 
-**Warning: This hasn't been used in anger, so I don't recommend using it in a production application just yet.**
-
 Simple message bus that supports synchronous and asynchronous message processing. It is intended to be used within a single application to help implement loosely coupled components. 
 
 ```go
