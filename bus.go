@@ -22,7 +22,9 @@ type Message interface{}
 
 type Subscriber interface {
 	Subscribe(fn interface{}) error
+	MustSubscribe(fn interface{})
 	SubscribeAsync(fn interface{}) error
+	MustSubscribeAsync(fn interface{})
 }
 
 type Publisher interface {
@@ -55,8 +57,20 @@ func (e *eventBus) Subscribe(fn interface{}) error {
 	return e.subscribe(fn, false)
 }
 
+func (e *eventBus) MustSubscribe(fn interface{}) {
+	if err := e.subscribe(fn, false); err != nil {
+		panic(err)
+	}
+}
+
 func (e *eventBus) SubscribeAsync(fn interface{}) error {
 	return e.subscribe(fn, true)
+}
+
+func (e *eventBus) MustSubscribeAsync(fn interface{}) {
+	if err := e.subscribe(fn, true); err != nil {
+		panic(err)
+	}
 }
 
 func (e *eventBus) subscribe(fn interface{}, isAsync bool) error {
