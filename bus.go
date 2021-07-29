@@ -8,29 +8,67 @@ import (
 	"sync"
 )
 
-const defaultAsyncHandlerQueueSize = 1000
-
-var ErrHandlerNotFound = errors.New("handler not found")
-
-type handler struct {
-	Handler reflect.Value
-	isAsync bool
-	queue   chan []reflect.Value
+// Bus exposes the Subscriber and Publisher and is the main interface used to interact with the message bus.
+//
+// Define a new message bus like so
+//
+// msgBus := bus.New()
+//
+// Subscribe to a message
+//
+// msgBus.Subscribe(func(ctx context.Context, message Message) error {
+//    message.Result = "1234"
+//    return nil
+// })
+//
+// Then publish a message to the bus
+//
+// msgBus.Publish(context.Background(), Message{Content: "hello"})
+type Bus interface {
+	Subscriber
+	Publisher
 }
 
-type Message interface{}
-
+// Subscriber listens to events published to the bus. Use Subscribe to listen to events synchronously and
+// SubscribeAsync to listen to events asynchronously. The Must methods simplify subscription but panic internally
+// if there are no subscribers, therefore these methods should only be used for defining static relationships, not
+// dynamic relationships defined at runtime.
+// The Message type must match the handler subscriber type. Pointer and
+// non-pointer messages are considered as separate types - internally subscribers are keyed using the message type which
+// includes a pointer symbol in the lookup key.
 type Subscriber interface {
+	// Subscribe is used to listen to events synchronously
 	Subscribe(fn interface{}) error
+
+	// MustSubscribe is used to listen to events synchronously. This method simplifies subscription but panics internally
+	// if there are no subscribers. It is recommended to only use this for defining static relationships rather than
+	// dynamic relationships defined at runtime
 	MustSubscribe(fn interface{})
+
+	// SubscribeAsync is used to listen to events asynchronously. Subscribers are run in a separate go routine and data
+	// is passed into the subscriber via a channel
 	SubscribeAsync(fn interface{}) error
+
+	// MustSubscribeAsync is used to listen to events asynchronously. This method simplifies subscription but panics internally
+	// if there are no subscribers. It is recommended to only use this for defining static relationships rather than
+	// dynamic relationships defined at runtime
 	MustSubscribeAsync(fn interface{})
 }
 
+// Publisher publishes an event to the bus. The Message type must match the handler subscriber type. Pointer and
+//// non-pointer messages are considered as separate types - internally subscribers are keyed using the message type which
+//// includes a pointer symbol in the lookup key.
 type Publisher interface {
 	Publish(ctx context.Context, msg Message) error
 }
 
+// ErrHandlerNotFound is returned when publishing an event that does not have any subscribers
+var ErrHandlerNotFound = errors.New("handler not found")
+
+// Message the data that is published. The implementing type is used as the handler key
+type Message interface{}
+
+// New create a new message bus.
 func New(queueSize ...int) Bus {
 	handlers := newHandlers()
 	size := defaultAsyncHandlerQueueSize
@@ -43,14 +81,15 @@ func New(queueSize ...int) Bus {
 	}
 }
 
-type Bus interface {
-	Subscriber
-	Publisher
-}
-
 type eventBus struct {
 	handlers  *handlers
 	queueSize int
+}
+
+type handler struct {
+	Handler reflect.Value
+	isAsync bool
+	queue   chan []reflect.Value
 }
 
 func (e *eventBus) Subscribe(fn interface{}) error {
@@ -191,3 +230,5 @@ func (cm *handlers) Iter() <-chan handlerItem {
 	go f()
 	return c
 }
+
+const defaultAsyncHandlerQueueSize = 1000
